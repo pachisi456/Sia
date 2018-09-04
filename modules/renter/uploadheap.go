@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/crypto"
+	"github.com/pachisi456/Sia/types"
 )
 
 // uploadHeap contains a priority-sorted heap of all the chunks being uploaded

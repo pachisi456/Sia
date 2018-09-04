@@ -1,6 +1,6 @@
 package wallet
 
-import "github.com/NebulousLabs/Sia/modules"
+import "github.com/pachisi456/Sia/modules"
 
 type (
 	// dependencyAcceptTxnSetFailed is a dependency used to cause a call to

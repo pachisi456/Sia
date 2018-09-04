@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/types"
 )
 
 // TestClearDownloads tests all the edge cases of the ClearDownloadHistory Method

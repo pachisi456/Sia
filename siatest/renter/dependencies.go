@@ -1,8 +1,8 @@
 package renter
 
 import (
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/siatest"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/siatest"
 )
 
 // dependencyBlockScan blocks the scan progress of the hostdb until Scan is

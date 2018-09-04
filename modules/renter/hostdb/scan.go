@@ -9,10 +9,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/crypto"
+	"github.com/pachisi456/Sia/encoding"
+	"github.com/pachisi456/Sia/modules"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -91,7 +91,7 @@ func (hdb *HostDB) queueScan(entry modules.HostDBEntry) {
 			scansRemaining := len(hdb.scanList)
 
 			// Grab the most recent entry for this host.
-			recentEntry, exists := hdb.hostTree.Select(entry.PublicKey)
+			recentEntry, exists := hdb.hostTrees.Select(entry.PublicKey)
 			if exists {
 				entry = recentEntry
 			}
@@ -149,7 +149,7 @@ func (hdb *HostDB) updateEntry(entry modules.HostDBEntry, netErr error) {
 	}
 
 	// Grab the host from the host tree, and update it with the neew settings.
-	newEntry, exists := hdb.hostTree.Select(entry.PublicKey)
+	newEntry, exists := hdb.hostTrees.Select(entry.PublicKey)
 	if exists {
 		newEntry.HostExternalSettings = entry.HostExternalSettings
 	} else {
@@ -211,7 +211,7 @@ func (hdb *HostDB) updateEntry(entry modules.HostDBEntry, netErr error) {
 	// hostdb. Only delete if there have been enough scans over a long enough
 	// period to be confident that the host really is offline for good.
 	if time.Now().Sub(newEntry.ScanHistory[0].Timestamp) > maxHostDowntime && !recentUptime && len(newEntry.ScanHistory) >= minScans {
-		err := hdb.hostTree.Remove(newEntry.PublicKey)
+		err := hdb.hostTrees.Remove(newEntry.PublicKey)
 		if err != nil {
 			hdb.log.Println("ERROR: unable to remove host newEntry which has had a ton of downtime:", err)
 		}
@@ -232,16 +232,29 @@ func (hdb *HostDB) updateEntry(entry modules.HostDBEntry, netErr error) {
 		newEntry.ScanHistory = newEntry.ScanHistory[1:]
 	}
 
+	// Determine host location (country).
+	ip, err := net.LookupIP(newEntry.NetAddress.Host())
+	if err != nil || ip[0] == nil {
+		hdb.log.Println("ERROR: could not identify IP address of host:", err)
+	} else {
+		record, err := hdb.ipdb.Country(ip[0])
+		if err != nil {
+			hdb.log.Println("ERROR: Could not determine host location:", err)
+		}
+		newEntry.Country = record.Country.Names["en"]
+		newEntry.EUhost = record.Country.IsInEuropeanUnion
+	}
+
 	// Add the updated entry
 	if !exists {
-		err := hdb.hostTree.Insert(newEntry)
+		err := hdb.hostTrees.Insert(newEntry)
 		if err != nil {
 			hdb.log.Println("ERROR: unable to insert entry which is was thought to be new:", err)
 		} else {
 			hdb.log.Debugf("Adding host %v to the hostdb. Net error: %v\n", newEntry.PublicKey.String(), netErr)
 		}
 	} else {
-		err := hdb.hostTree.Modify(newEntry)
+		err := hdb.hostTrees.Modify(newEntry)
 		if err != nil {
 			hdb.log.Println("ERROR: unable to modify entry which is thought to exist:", err)
 		} else {
@@ -410,7 +423,8 @@ func (hdb *HostDB) threadedScan() {
 	// The initial scan might have been interrupted. Queue one scan for every
 	// announced host that was missed by the initial scan and wait for the
 	// scans to finish before starting the scan loop.
-	allHosts := hdb.hostTree.All()
+	//TODO pachisi456: add support for multiple trees
+	allHosts := hdb.hostTrees.All("default")
 	hdb.mu.Lock()
 	for _, host := range allHosts {
 		if len(host.ScanHistory) == 0 && host.HistoricUptime == 0 && host.HistoricDowntime == 0 {
@@ -435,7 +449,9 @@ func (hdb *HostDB) threadedScan() {
 		// Grab a set of hosts to scan, grab hosts that are active, inactive,
 		// and offline to get high diversity.
 		var onlineHosts, offlineHosts []modules.HostDBEntry
-		allHosts := hdb.hostTree.All()
+		//TODO below code does not support multiple host trees, just the default one.
+		allHosts := hdb.hostTrees.All("default") //TODO prioritization of hosts happens on the basis
+		// of the default host tree
 		for i := len(allHosts) - 1; i >= 0; i-- {
 			if len(onlineHosts) >= hostCheckupQuantity && len(offlineHosts) >= hostCheckupQuantity {
 				break

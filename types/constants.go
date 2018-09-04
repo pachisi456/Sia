@@ -11,7 +11,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/pachisi456/Sia/build"
 )
 
 var (

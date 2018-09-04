@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	siasync "github.com/NebulousLabs/Sia/sync"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/crypto"
+	"github.com/pachisi456/Sia/modules"
+	siasync "github.com/pachisi456/Sia/sync"
+	"github.com/pachisi456/Sia/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -89,7 +89,7 @@ func makeHostDBEntry() modules.HostDBEntry {
 }
 
 func TestHostTree(t *testing.T) {
-	tree := New(func(hdbe modules.HostDBEntry) types.Currency {
+	tree := NewHostTree(func(hdbe modules.HostDBEntry) types.Currency {
 		return types.NewCurrency64(20)
 	})
 
@@ -145,7 +145,7 @@ func TestHostTreeParallel(t *testing.T) {
 		t.SkipNow()
 	}
 
-	tree := New(func(dbe modules.HostDBEntry) types.Currency {
+	tree := NewHostTree(func(dbe modules.HostDBEntry) types.Currency {
 		return types.NewCurrency64(10)
 	})
 
@@ -243,7 +243,7 @@ func TestHostTreeParallel(t *testing.T) {
 }
 
 func TestHostTreeModify(t *testing.T) {
-	tree := New(func(dbe modules.HostDBEntry) types.Currency {
+	tree := NewHostTree(func(dbe modules.HostDBEntry) types.Currency {
 		return types.NewCurrency64(10)
 	})
 
@@ -293,7 +293,7 @@ func TestVariedWeights(t *testing.T) {
 	// will be tallied up as hosts are created.
 	i := 0
 
-	tree := New(func(dbe modules.HostDBEntry) types.Currency {
+	tree := NewHostTree(func(dbe modules.HostDBEntry) types.Currency {
 		return types.NewCurrency64(uint64(i))
 	})
 
@@ -345,7 +345,7 @@ func TestRepeatInsert(t *testing.T) {
 		t.SkipNow()
 	}
 
-	tree := New(func(dbe modules.HostDBEntry) types.Currency {
+	tree := NewHostTree(func(dbe modules.HostDBEntry) types.Currency {
 		return types.NewCurrency64(10)
 	})
 
@@ -363,7 +363,7 @@ func TestRepeatInsert(t *testing.T) {
 func TestNodeAtWeight(t *testing.T) {
 	weight := types.NewCurrency64(10)
 	// create hostTree
-	tree := New(func(dbe modules.HostDBEntry) types.Currency {
+	tree := NewHostTree(func(dbe modules.HostDBEntry) types.Currency {
 		return weight
 	})
 
@@ -383,7 +383,7 @@ func TestNodeAtWeight(t *testing.T) {
 func TestRandomHosts(t *testing.T) {
 	calls := 0
 	// Create the tree.
-	tree := New(func(dbe modules.HostDBEntry) types.Currency {
+	tree := NewHostTree(func(dbe modules.HostDBEntry) types.Currency {
 		calls++
 		return types.NewCurrency64(uint64(calls))
 	})

@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/consensus"
-	"github.com/NebulousLabs/Sia/modules/gateway"
-	"github.com/NebulousLabs/Sia/modules/miner"
-	"github.com/NebulousLabs/Sia/modules/renter/hostdb/hosttree"
-	"github.com/NebulousLabs/Sia/modules/transactionpool"
-	"github.com/NebulousLabs/Sia/modules/wallet"
-	"github.com/NebulousLabs/Sia/persist"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/crypto"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/modules/consensus"
+	"github.com/pachisi456/Sia/modules/gateway"
+	"github.com/pachisi456/Sia/modules/miner"
+	"github.com/pachisi456/Sia/modules/renter/hostdb/hosttree"
+	"github.com/pachisi456/Sia/modules/transactionpool"
+	"github.com/pachisi456/Sia/modules/wallet"
+	"github.com/pachisi456/Sia/persist"
+	"github.com/pachisi456/Sia/types"
 )
 
 // hdbTester contains a hostdb and all dependencies.
@@ -41,7 +41,7 @@ func bareHostDB() *HostDB {
 	hdb := &HostDB{
 		log: persist.NewLogger(ioutil.Discard),
 	}
-	hdb.hostTree = hosttree.New(hdb.calculateHostWeight)
+	hdb.hostTrees = hosttree.NewHostTree(hdb.calculateHostWeight)
 	return hdb
 }
 
@@ -145,7 +145,7 @@ func TestAverageContractPrice(t *testing.T) {
 	// with one host
 	h1 := makeHostDBEntry()
 	h1.ContractPrice = types.NewCurrency64(100)
-	hdb.hostTree.Insert(h1)
+	hdb.hostTrees.Insert(h1)
 	if avg := hdb.AverageContractPrice(); avg.Cmp(h1.ContractPrice) != 0 {
 		t.Error("average of one host should be that host's price:", avg)
 	}
@@ -153,7 +153,7 @@ func TestAverageContractPrice(t *testing.T) {
 	// with two hosts
 	h2 := makeHostDBEntry()
 	h2.ContractPrice = types.NewCurrency64(300)
-	hdb.hostTree.Insert(h2)
+	hdb.hostTrees.Insert(h2)
 	if avg := hdb.AverageContractPrice(); avg.Cmp64(200) != 0 {
 		t.Error("average of two hosts should be their sum/2:", avg)
 	}
@@ -226,7 +226,7 @@ func TestRandomHosts(t *testing.T) {
 	for i := 0; i < nEntries; i++ {
 		entry := makeHostDBEntry()
 		entries[string(entry.PublicKey.Key)] = entry
-		err := hdbt.hdb.hostTree.Insert(entry)
+		err := hdbt.hdb.hostTrees.Insert(entry)
 		if err != nil {
 			t.Error(err)
 		}
@@ -432,7 +432,7 @@ func TestRemoveNonexistingHostFromHostTree(t *testing.T) {
 	}
 
 	// Remove a host that doesn't exist from the tree.
-	err = hdbt.hdb.hostTree.Remove(types.SiaPublicKey{})
+	err = hdbt.hdb.hostTrees.Remove(types.SiaPublicKey{})
 	if err == nil {
 		t.Fatal("There should be an error, but not a panic:", err)
 	}
@@ -454,7 +454,7 @@ func TestUpdateHistoricInteractions(t *testing.T) {
 
 	// create a HostDBEntry and add it to the tree
 	host := makeHostDBEntry()
-	err = hdbt.hdb.hostTree.Insert(host)
+	err = hdbt.hdb.hostTrees.Insert(host)
 	if err != nil {
 		t.Error(err)
 	}

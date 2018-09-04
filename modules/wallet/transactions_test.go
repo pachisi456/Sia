@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/types"
 )
 
 // TestIntegrationTransactions checks that the transaction history is being

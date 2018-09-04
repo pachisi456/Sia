@@ -3,10 +3,11 @@ package hostdb
 import (
 	"math"
 	"math/big"
+	"strings"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/types"
 )
 
 var (
@@ -53,6 +54,30 @@ var (
 	// in a month.
 	tbMonth = uint64(4032) * uint64(1e12)
 )
+
+// blacklistHost returns false if the provided host's country is accepted by the provided
+// hostdb profile or no location is specified in the hostdb profile, otherwise true.
+func (hdb *HostDB) blacklistHost(entry modules.HostDBEntry, hostdbprofile string) bool {
+	// Blacklist host if it does not have any location information.
+	if entry.Country == "" {
+		return true
+	}
+	// Accept hosts from all locations if no location is specified in hostdb profile.
+	hdbp := hdb.HostDBProfile(hostdbprofile)
+	if len(hdbp.Location) < 1 {
+		return false
+	}
+	// Check if host's location is among the locations specified in the hostdb profile.
+	for _, l := range hdbp.Location {
+		if l == "eu" && entry.EUhost {
+			return false
+		}
+		if l == strings.ToLower(entry.Country) {
+			return false
+		}
+	}
+	return true
+}
 
 // collateralAdjustments improves the host's weight according to the amount of
 // collateral that they have provided.
@@ -128,8 +153,8 @@ func (hdb *HostDB) interactionAdjustments(entry modules.HostDBEntry) float64 {
 }
 
 // priceAdjustments will adjust the weight of the entry according to the prices
-// that it has set.
-func (hdb *HostDB) priceAdjustments(entry modules.HostDBEntry) float64 {
+// that it has set and the storage tier defined in the hostdb profile.
+func (hdb *HostDB) priceAdjustments(entry modules.HostDBEntry, hostdbprofile string) float64 {
 	// Sanity checks - the constants values need to have certain relationships
 	// to eachother
 	if build.DEBUG {
@@ -159,6 +184,21 @@ func (hdb *HostDB) priceAdjustments(entry modules.HostDBEntry) float64 {
 	adjustedUploadPrice := entry.UploadBandwidthPrice.Div64(24192)              // Adjust upload price to match a single upload over 24 weeks.
 	adjustedDownloadPrice := entry.DownloadBandwidthPrice.Div64(12096).Div64(3) // Adjust download price to match one download over 12 weeks, 1 redundancy.
 	siafundFee := adjustedContractPrice.Add(adjustedUploadPrice).Add(adjustedDownloadPrice).Add(entry.Collateral).MulTax()
+
+	// Weigh prices, depending on the storage tier.
+	hdbp := hdb.hostdbProfiles.GetProfile(hostdbprofile)
+	switch hdbp.Storagetier {
+	case "cold":
+		// Prefer hosts with cheap storage.
+		adjustedContractPrice = adjustedContractPrice.Mul64(5)
+	case "warm":
+		// Weigh prices equally.
+	case "hot":
+		// Prefer hosts with cheap bandwidth.
+		adjustedUploadPrice = adjustedUploadPrice.Mul64(5)
+		adjustedDownloadPrice = adjustedDownloadPrice.Mul64(5)
+	}
+
 	totalPrice := entry.StoragePrice.Add(adjustedContractPrice).Add(adjustedUploadPrice).Add(adjustedDownloadPrice).Add(siafundFee)
 
 	// Set a minimum on the price, then normalize to a sane precision.
@@ -363,13 +403,14 @@ func (hdb *HostDB) uptimeAdjustments(entry modules.HostDBEntry) float64 {
 	return math.Pow(uptimeRatio, exp)
 }
 
-// calculateHostWeight returns the weight of a host according to the settings of
-// the host database entry.
-func (hdb *HostDB) calculateHostWeight(entry modules.HostDBEntry) types.Currency {
+// calculateHostWeight returns the weight of a host as well as a boolean
+// indicating whether that host should be blacklisted according to the settings
+// of the host database entry and the settings set in the hostdb profile.
+func (hdb *HostDB) calculateHostWeight(entry modules.HostDBEntry, hostdbprofile string) (weight types.Currency, blacklist bool) {
 	collateralReward := hdb.collateralAdjustments(entry)
 	interactionPenalty := hdb.interactionAdjustments(entry)
 	lifetimePenalty := hdb.lifetimeAdjustments(entry)
-	pricePenalty := hdb.priceAdjustments(entry)
+	pricePenalty := hdb.priceAdjustments(entry, hostdbprofile)
 	storageRemainingPenalty := storageRemainingAdjustments(entry)
 	uptimePenalty := hdb.uptimeAdjustments(entry)
 	versionPenalty := versionAdjustments(entry)
@@ -379,12 +420,16 @@ func (hdb *HostDB) calculateHostWeight(entry modules.HostDBEntry) types.Currency
 		pricePenalty * storageRemainingPenalty * uptimePenalty * versionPenalty
 
 	// Return a types.Currency.
-	weight := baseWeight.MulFloat(fullPenalty)
+	weight = baseWeight.MulFloat(fullPenalty)
 	if weight.IsZero() {
-		// A weight of zero is problematic for for the host tree.
-		return types.NewCurrency64(1)
+		// A weight of zero is problematic for the host tree.
+		weight = types.NewCurrency64(1)
 	}
-	return weight
+
+	// Blacklist host if location is not among the specified ones in the hostdb profile.
+	blacklist = hdb.blacklistHost(entry, hostdbprofile)
+
+	return
 }
 
 // calculateConversionRate calculates the conversion rate of the provided
@@ -392,8 +437,11 @@ func (hdb *HostDB) calculateHostWeight(entry modules.HostDBEntry) types.Currency
 // percentage of contracts it is likely to participate in.
 func (hdb *HostDB) calculateConversionRate(score types.Currency) float64 {
 	var totalScore types.Currency
-	for _, h := range hdb.ActiveHosts() {
-		totalScore = totalScore.Add(hdb.calculateHostWeight(h))
+	//TODO pachisi456: add support for multiple trees
+	//TODO pachisi456: exclude blacklisted hosts?
+	for _, h := range hdb.ActiveHosts("default") {
+		score, _ := hdb.calculateHostWeight(h, "default")
+		totalScore = totalScore.Add(score)
 	}
 	if totalScore.IsZero() {
 		totalScore = types.NewCurrency64(1)
@@ -405,13 +453,13 @@ func (hdb *HostDB) calculateConversionRate(score types.Currency) float64 {
 	return conversionRate
 }
 
-// EstimateHostScore takes a HostExternalSettings and returns the estimated
-// score of that host in the hostdb, assuming no penalties for age or uptime.
-func (hdb *HostDB) EstimateHostScore(entry modules.HostDBEntry) modules.HostScoreBreakdown {
+// EstimateHostScore takes a HostExternalSettings and returns the estimated score of that host in the hostdb,
+// assuming no penalties for age or uptime. As arguments the HostDBEntry and the name of the hostdb profile are given.
+func (hdb *HostDB) EstimateHostScore(entry modules.HostDBEntry, hostdbprofile string) modules.HostScoreBreakdown {
 	// Grab the adjustments. Age, and uptime penalties are set to '1', to
 	// assume best behavior from the host.
 	collateralReward := hdb.collateralAdjustments(entry)
-	pricePenalty := hdb.priceAdjustments(entry)
+	pricePenalty := hdb.priceAdjustments(entry, hostdbprofile)
 	storageRemainingPenalty := storageRemainingAdjustments(entry)
 	versionPenalty := versionAdjustments(entry)
 
@@ -438,22 +486,23 @@ func (hdb *HostDB) EstimateHostScore(entry modules.HostDBEntry) modules.HostScor
 	}
 }
 
-// ScoreBreakdown provdes a detailed set of scalars and bools indicating
-// elements of the host's overall score.
-func (hdb *HostDB) ScoreBreakdown(entry modules.HostDBEntry) modules.HostScoreBreakdown {
+// ScoreBreakdown provides a detailed set of scalars and bools indicating elements of the
+// host's overall score. As arguments the HostDBEntry and the name of the hostdb profile are given.
+func (hdb *HostDB) ScoreBreakdown(entry modules.HostDBEntry, hostdbprofile string) modules.HostScoreBreakdown {
 	hdb.mu.Lock()
 	defer hdb.mu.Unlock()
 
-	score := hdb.calculateHostWeight(entry)
+	score, blacklist := hdb.calculateHostWeight(entry, hostdbprofile)
 	return modules.HostScoreBreakdown{
 		Score:          score,
 		ConversionRate: hdb.calculateConversionRate(score),
+		Blacklisted:    blacklist,
 
 		AgeAdjustment:              hdb.lifetimeAdjustments(entry),
 		BurnAdjustment:             1,
 		CollateralAdjustment:       hdb.collateralAdjustments(entry),
 		InteractionAdjustment:      hdb.interactionAdjustments(entry),
-		PriceAdjustment:            hdb.priceAdjustments(entry),
+		PriceAdjustment:            hdb.priceAdjustments(entry, hostdbprofile),
 		StorageRemainingAdjustment: storageRemainingAdjustments(entry),
 		UptimeAdjustment:           hdb.uptimeAdjustments(entry),
 		VersionAdjustment:          versionAdjustments(entry),

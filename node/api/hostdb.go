@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/types"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -59,7 +59,7 @@ func (api *API) hostdbHandler(w http.ResponseWriter, req *http.Request, _ httpro
 // hosts.
 func (api *API) hostdbActiveHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	var numHosts uint64
-	hosts := api.renter.ActiveHosts()
+	hosts := api.renter.ActiveHosts("default") //TODO pachisi456: add support for multiple profiles / trees
 
 	if req.FormValue("numhosts") == "" {
 		// Default value for 'numhosts' is all of them.
@@ -95,7 +95,7 @@ func (api *API) hostdbActiveHandler(w http.ResponseWriter, req *http.Request, _ 
 // hostdbAllHandler handles the API call asking for the list of all hosts.
 func (api *API) hostdbAllHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	// Get the set of all hosts and convert them into extended hosts.
-	hosts := api.renter.AllHosts()
+	hosts := api.renter.AllHosts("default") //TODO pachisi456: add support for multiple profiles / trees
 	var extendedHosts []ExtendedHostDBEntry
 	for _, host := range hosts {
 		extendedHosts = append(extendedHosts, ExtendedHostDBEntry{
@@ -120,7 +120,8 @@ func (api *API) hostdbHostsHandler(w http.ResponseWriter, req *http.Request, ps 
 		WriteError(w, Error{"requested host does not exist"}, http.StatusBadRequest)
 		return
 	}
-	breakdown := api.renter.ScoreBreakdown(entry)
+	//TODO pachisi456: add support for multiple trees/profiles
+	breakdown := api.renter.ScoreBreakdown(entry, "default")
 
 	// Extend the hostdb entry  to have the public key string.
 	extendedEntry := ExtendedHostDBEntry{
@@ -131,4 +132,46 @@ func (api *API) hostdbHostsHandler(w http.ResponseWriter, req *http.Request, ps 
 		Entry:          extendedEntry,
 		ScoreBreakdown: breakdown,
 	})
+}
+
+// hostDBProfilesHandlerGET handles the API call asking for the list of hostdb profiles and returns such.
+func (api *API) hostDBProfilesHandlerGET(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	hdbprofiles := api.renter.HostDBProfiles()
+	WriteJSON(w, hdbprofiles)
+}
+
+// hostDBProfilesAddHandler handles the API call for adding a new hostdb profile
+func (api *API) hostDBProfilesAddHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	name := req.FormValue("name")
+	storagetier := req.FormValue("storagetier")
+	err := api.renter.AddHostDBProfiles(name, storagetier)
+	if err != nil {
+		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteSuccess(w)
+}
+
+// hostDBProfilesConfigHandler handles the API call to change a setting of a hostdb profile.
+func (api *API) hostDBProfilesConfigHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	name := req.FormValue("name")
+	setting := req.FormValue("setting")
+	value := req.FormValue("value")
+	err := api.renter.ConfigHostDBProfiles(name, setting, value)
+	if err != nil {
+		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteSuccess(w)
+}
+
+// hostDBProfilesDeleteHandler handles the API call to delete a hostdb profile.
+func (api *API) hostDBProfilesDeleteHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	name := req.FormValue("name")
+	err := api.renter.DeleteHostDBProfile(name)
+	if err != nil {
+		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteSuccess(w)
 }

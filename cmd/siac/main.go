@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/node/api/client"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/node/api/client"
 )
 
 var (
@@ -98,8 +98,13 @@ func main() {
 
 	root.AddCommand(hostdbCmd)
 	hostdbCmd.AddCommand(hostdbViewCmd)
+	hostdbCmd.AddCommand(hostdbProfilesCmd)
 	hostdbCmd.Flags().IntVarP(&hostdbNumHosts, "numhosts", "n", 0, "Number of hosts to display from the hostdb")
 	hostdbCmd.Flags().BoolVarP(&hostdbVerbose, "verbose", "v", false, "Display full hostdb information")
+
+	hostdbProfilesCmd.AddCommand(hostdbProfilesAddCmd)
+	hostdbProfilesCmd.AddCommand(hostdbProfilesConfigCmd)
+	hostdbProfilesCmd.AddCommand(hostdbProfilesDeleteCmd)
 
 	root.AddCommand(minerCmd)
 	minerCmd.AddCommand(minerStartCmd, minerStopCmd)

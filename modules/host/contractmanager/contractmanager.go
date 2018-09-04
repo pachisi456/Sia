@@ -30,11 +30,11 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/persist"
-	siasync "github.com/NebulousLabs/Sia/sync"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/crypto"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/persist"
+	siasync "github.com/pachisi456/Sia/sync"
 )
 
 // ContractManager is responsible for managing contracts that the host has with

@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/pachisi456/Sia/modules"
 )
 
 // quitAfterLoadDeps will quit startup in newHostDB
@@ -54,9 +54,9 @@ func TestSaveLoad(t *testing.T) {
 	host1.PublicKey.Key = []byte("foo")
 	host2.PublicKey.Key = []byte("bar")
 	host3.PublicKey.Key = []byte("baz")
-	hdbt.hdb.hostTree.Insert(host1)
-	hdbt.hdb.hostTree.Insert(host2)
-	hdbt.hdb.hostTree.Insert(host3)
+	hdbt.hdb.hostTrees.Insert(host1)
+	hdbt.hdb.hostTrees.Insert(host2)
+	hdbt.hdb.hostTrees.Insert(host3)
 
 	// Save, close, and reload.
 	hdbt.hdb.mu.Lock()
@@ -85,11 +85,11 @@ func TestSaveLoad(t *testing.T) {
 	}
 
 	// Check that AllHosts was loaded.
-	h1, ok0 := hdbt.hdb.hostTree.Select(host1.PublicKey)
-	h2, ok1 := hdbt.hdb.hostTree.Select(host2.PublicKey)
-	h3, ok2 := hdbt.hdb.hostTree.Select(host3.PublicKey)
-	if !ok0 || !ok1 || !ok2 || len(hdbt.hdb.hostTree.All()) != 3 {
-		t.Error("allHosts was not restored properly", ok0, ok1, ok2, len(hdbt.hdb.hostTree.All()))
+	h1, ok0 := hdbt.hdb.hostTrees.Select(host1.PublicKey)
+	h2, ok1 := hdbt.hdb.hostTrees.Select(host2.PublicKey)
+	h3, ok2 := hdbt.hdb.hostTrees.Select(host3.PublicKey)
+	if !ok0 || !ok1 || !ok2 || len(hdbt.hdb.hostTrees.All()) != 3 {
+		t.Error("allHosts was not restored properly", ok0, ok1, ok2, len(hdbt.hdb.hostTrees.All()))
 	}
 	if h1.FirstSeen != 1 {
 		t.Error("h1 block height loaded incorrectly")

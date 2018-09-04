@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/node"
-	"github.com/NebulousLabs/Sia/node/api"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/node"
+	"github.com/pachisi456/Sia/node/api"
+	"github.com/pachisi456/Sia/types"
 
 	"github.com/NebulousLabs/errors"
 )

@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/node/api"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/node/api"
+	"github.com/pachisi456/Sia/types"
 )
 
 const scanHistoryLen = 30
@@ -33,6 +33,59 @@ var (
 		Short: "View the full information for a host.",
 		Long:  "View detailed information about a host, including things like a score breakdown.",
 		Run:   wrap(hostdbviewcmd),
+	}
+
+	hostdbProfilesCmd = &cobra.Command{
+		Use:   "profiles",
+		Short: "View and edit hostdb profiles.",
+		Long:  "View and edit hostdb profiles to customize the way hosts are selected.",
+		Run:   wrap(hostdbprofilescmd),
+	}
+
+	hostdbProfilesAddCmd = &cobra.Command{
+		Use:   "add [name] [storagetier]",
+		Short: "Add a hostdb profile.",
+		Long: `Add a hostdb profile that uses custom settings for the
+host selection. When uploading a file you can then specify under what
+profile your file should be uploaded.
+
+[name] will be the name for the profile.
+
+[storagetier] is a parameter to set preference for either price or
+performance. You can choose between "cold", "warm" and "hot". "cold"
+will pick cheap hosts with less performance while "hot" will pick 
+high-performance but more expensive hosts. "warm" is the default setting
+and makes a reasonable compromise between price and performance.
+`,
+		Run: wrap(hostdbprofilesaddcmd),
+	}
+
+	hostdbProfilesConfigCmd = &cobra.Command{
+		Use:   "config [name] [setting] [value]",
+		Short: "Edit a hostdb profile.",
+		Long: `Edit a hostdb profile to customize the way hosts are selected.
+
+Add to the command the [name] of the profile you want to edit and the
+[setting] ("storagetier", "addlocation" or "removelocation") you want to edit.
+
+For the [value] of "storagetier" you can choose between "cold", "warm" and 
+"hot". "cold" will pick cheap hosts with less performance while "hot" will
+pick high-performance but more expensive hosts. "warm" is the default setting
+and makes a reasonable compromise between price and performance.
+
+For the [value] of "addlocation" or "removelocation" you can simply type down
+the according country or region (e.g. "germany" or "eu"). Siad will only form
+contracts with hosts in the whitelisted locations. If no location is provided
+at all siad will pick hosts from all over the world.
+`,
+		Run: wrap(hostdbprofilesconfigcmd),
+	}
+
+	hostdbProfilesDeleteCmd = &cobra.Command{
+		Use:   "delete [name]",
+		Short: "Delete a hostdb profile.",
+		Long:  "Delete the hostdb profile with the provided [name].",
+		Run:   wrap(hostdbprofilesdeletecmd),
 	}
 )
 
@@ -285,6 +338,7 @@ func hostdbviewcmd(pubkey string) {
 
 	fmt.Println("  Public Key:", info.Entry.PublicKeyString)
 	fmt.Println("  Block First Seen:", info.Entry.FirstSeen)
+	fmt.Println("  Location:", info.Entry.Country)
 
 	fmt.Println("\n  Host Settings:")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -327,4 +381,45 @@ func hostdbviewcmd(pubkey string) {
 	fmt.Printf("  Overall Uptime:      %.3f\n", uptimeRatio)
 
 	fmt.Println()
+}
+
+func hostdbprofilescmd() {
+	hdbp, err := httpClient.HostDbProfilesGet()
+	if err != nil {
+		die("Could not fetch hostdb profiles:", err)
+	}
+
+	fmt.Println("Hostdb profiles:")
+	for k, v := range hdbp {
+		fmt.Printf(`
+	Profile "%v":
+		Storage Tier:	%v
+		Host Location:	%v
+
+`, k, v.Storagetier, v.Location)
+	}
+}
+
+func hostdbprofilesaddcmd(name, storagetier string) {
+	err := httpClient.HostDbProfilesAddPost(name, storagetier)
+	if err != nil {
+		die("Could not add hostdb profile:", err)
+	}
+	fmt.Println("Added hostdb profile", name)
+}
+
+func hostdbprofilesconfigcmd(name, setting, value string) {
+	err := httpClient.HostDbProfilesConfigPost(name, setting, value)
+	if err != nil {
+		die("Could not edit hostdb profile:", err)
+	}
+	fmt.Println("Profile \"" + name + "\" has been edited successfully.")
+}
+
+func hostdbprofilesdeletecmd(name string) {
+	err := httpClient.HostDbProfilesDeletePost(name)
+	if err != nil {
+		die("Could not delete hostdb profile:", err)
+	}
+	fmt.Println("Profile \"" + name + "\" has been deleted successfully.")
 }

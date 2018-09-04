@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/NebulousLabs/Sia/crypto"
+	"github.com/pachisi456/Sia/crypto"
 	"github.com/NebulousLabs/errors"
 	"github.com/NebulousLabs/fastrand"
 )

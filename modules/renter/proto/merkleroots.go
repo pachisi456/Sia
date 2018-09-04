@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/crypto"
 	"github.com/NebulousLabs/errors"
 )
 

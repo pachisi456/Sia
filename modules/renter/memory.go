@@ -8,7 +8,7 @@ package renter
 import (
 	"sync"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/pachisi456/Sia/build"
 )
 
 // memoryManager can handle requests for memory and returns of memory. The

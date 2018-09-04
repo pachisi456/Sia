@@ -36,9 +36,9 @@ import (
 	"github.com/NebulousLabs/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/node/api"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/node/api"
+	"github.com/pachisi456/Sia/types"
 )
 
 var (
@@ -431,8 +431,23 @@ Total stored:         %9s
 Total Remaining:      %v
 Total Spent:          %v
 Total Fees:           %v
+Average storage price (TB / Mo): %v
+Average upload bandwidth price (1 TB): %v
+Average download bandwidth price (1 TB): %v
+`, len(rc.ActiveContracts), filesizeUnits(int64(activeTotalStored)), currencyUnits(activeTotalRemaining), currencyUnits(activeTotalSpent),
+currencyUnits(activeTotalFees), currencyUnits(rc.AvgStoragePrice.Mul(modules.BlockBytesPerMonthTerabyte)),
+currencyUnits(rc.AvgULPrice.Mul(modules.BytesPerTerabyte)), currencyUnits(rc.AvgDLPrice.Mul(modules.BytesPerTerabyte)))
+		fmt.Print("  Countries hosts are located in: ")
+		for i := 0; i < len(rc.Countries); i++ {
+			if i < len(rc.Countries) - 1 {
+				fmt.Print(rc.Countries[i] + ", ")
+			} else {
+				fmt.Print(rc.Countries[i])
+			}
+		}
+		fmt.Println()
+		fmt.Println()
 
-`, len(rc.ActiveContracts), filesizeUnits(int64(activeTotalStored)), currencyUnits(activeTotalRemaining), currencyUnits(activeTotalSpent), currencyUnits(activeTotalFees))
 		w := tabwriter.NewWriter(os.Stdout, 2, 0, 2, ' ', 0)
 		fmt.Fprintln(w, "Host\tRemaining Funds\tSpent Funds\tSpent Fees\tData\tEnd Height\tID\tGoodForUpload\tGoodForRenew")
 		for _, c := range rc.ActiveContracts {

@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/pachisi456/Sia/build"
 )
 
 // syncResources will call Sync on all resources that the WAL has open. The

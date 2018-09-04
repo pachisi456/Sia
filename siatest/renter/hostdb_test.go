@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/node"
-	"github.com/NebulousLabs/Sia/siatest"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/node"
+	"github.com/pachisi456/Sia/siatest"
 )
 
 // TestInitialScanComplete tests if the initialScanComplete field is set

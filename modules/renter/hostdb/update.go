@@ -1,9 +1,9 @@
 package hostdb
 
 import (
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/types"
 )
 
 // findHostAnnouncements returns a list of the host announcements found within
@@ -45,7 +45,7 @@ func (hdb *HostDB) insertBlockchainHost(host modules.HostDBEntry) {
 
 	// Make sure the host gets into the host tree so it does not get dropped if
 	// shutdown occurs before a scan can be performed.
-	oldEntry, exists := hdb.hostTree.Select(host.PublicKey)
+	oldEntry, exists := hdb.hostTrees.Select(host.PublicKey)
 	if exists {
 		// Replace the netaddress with the most recently announced netaddress.
 		// Also replace the FirstSeen value with the current block height if
@@ -56,13 +56,13 @@ func (hdb *HostDB) insertBlockchainHost(host modules.HostDBEntry) {
 		if oldEntry.FirstSeen == 0 {
 			oldEntry.FirstSeen = hdb.blockHeight
 		}
-		err := hdb.hostTree.Modify(oldEntry)
+		err := hdb.hostTrees.Modify(oldEntry)
 		if err != nil {
 			hdb.log.Println("ERROR: unable to modify host entry of host tree after a blockchain scan:", err)
 		}
 	} else {
 		host.FirstSeen = hdb.blockHeight
-		err := hdb.hostTree.Insert(host)
+		err := hdb.hostTrees.Insert(host)
 		if err != nil {
 			hdb.log.Println("ERROR: unable to insert host entry into host tree after a blockchain scan:", err)
 		}

@@ -26,13 +26,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/renter/contractor"
-	"github.com/NebulousLabs/Sia/modules/renter/hostdb"
-	"github.com/NebulousLabs/Sia/persist"
-	siasync "github.com/NebulousLabs/Sia/sync"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/modules/renter/contractor"
+	"github.com/pachisi456/Sia/modules/renter/hostdb"
+	"github.com/pachisi456/Sia/modules/renter/hostdb/hostdbprofile"
+	"github.com/pachisi456/Sia/persist"
+	siasync "github.com/pachisi456/Sia/sync"
+	"github.com/pachisi456/Sia/types"
 
 	"github.com/NebulousLabs/threadgroup"
 )
@@ -62,20 +63,33 @@ var (
 type hostDB interface {
 	// ActiveHosts returns the list of hosts that are actively being selected
 	// from.
-	ActiveHosts() []modules.HostDBEntry
+	ActiveHosts(string) []modules.HostDBEntry
+
+	// AddHostDBProfile adds a new hostdb profile.
+	AddHostDBProfiles(string, string) error
 
 	// AllHosts returns the full list of hosts known to the hostdb, sorted in
 	// order of preference.
-	AllHosts() []modules.HostDBEntry
+	AllHosts(string) []modules.HostDBEntry
 
 	// AverageContractPrice returns the average contract price of a host.
-	AverageContractPrice() types.Currency
+	AverageContractPrice(string) types.Currency
 
 	// Close closes the hostdb.
 	Close() error
 
+	// ConfigHostDBProfile updates the provided setting of the hostdb profile with the
+	// provided name to the provided value. All parameters are checked for validity.
+	ConfigHostDBProfile(name, setting, value string) (err error)
+
+	// DeleteHostDBProfile deletes the hostdb profile with the provided name.
+	DeleteHostDBProfile(name string) error
+
 	// Host returns the HostDBEntry for a given host.
 	Host(types.SiaPublicKey) (modules.HostDBEntry, bool)
+
+	// HostDBProfiles returns the map of set hostdb profiles.
+	HostDBProfiles() map[string]*hostdbprofile.HostDBProfile
 
 	// initialScanComplete returns a boolean indicating if the initial scan of the
 	// hostdb is completed.
@@ -84,15 +98,15 @@ type hostDB interface {
 	// RandomHosts returns a set of random hosts, weighted by their estimated
 	// usefulness / attractiveness to the renter. RandomHosts will not return
 	// any offline or inactive hosts.
-	RandomHosts(int, []types.SiaPublicKey) ([]modules.HostDBEntry, error)
+	RandomHosts(string, int, []types.SiaPublicKey) ([]modules.HostDBEntry, error)
 
 	// ScoreBreakdown returns a detailed explanation of the various properties
 	// of the host.
-	ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown
+	ScoreBreakdown(modules.HostDBEntry, string) modules.HostScoreBreakdown
 
 	// EstimateHostScore returns the estimated score breakdown of a host with the
 	// provided settings.
-	EstimateHostScore(modules.HostDBEntry) modules.HostScoreBreakdown
+	EstimateHostScore(modules.HostDBEntry, string) modules.HostScoreBreakdown
 }
 
 // A hostContractor negotiates, revises, renews, and provides access to file
@@ -228,7 +242,8 @@ func (r *Renter) Close() error {
 // PriceEstimation estimates the cost in siacoins of performing various storage
 // and data operations.
 //
-// TODO: Make this function line up with the actual settings in the renter.
+// TODO: Make this function line up with the actual settings and different profiles
+// in the renter (right now it just uses the default host tree).
 // Perhaps even make it so it uses the renter's actual contracts if it has any.
 func (r *Renter) PriceEstimation() modules.RenterPriceEstimation {
 	id := r.mu.RLock()
@@ -239,7 +254,8 @@ func (r *Renter) PriceEstimation() modules.RenterPriceEstimation {
 	}
 
 	// Grab hosts to perform the estimation.
-	hosts, err := r.hostDB.RandomHosts(priceEstimationScope, nil)
+	//TODO this uses just the default host tree
+	hosts, err := r.hostDB.RandomHosts("default", priceEstimationScope, nil)
 	if err != nil {
 		return modules.RenterPriceEstimation{}
 	}
@@ -366,26 +382,45 @@ func (r *Renter) SetSettings(s modules.RenterSettings) error {
 }
 
 // ActiveHosts returns an array of hostDB's active hosts
-func (r *Renter) ActiveHosts() []modules.HostDBEntry { return r.hostDB.ActiveHosts() }
+func (r *Renter) ActiveHosts(tree string) []modules.HostDBEntry { return r.hostDB.ActiveHosts(tree) }
+
+// AddHostDBProfile adds a new hostdb profile.
+func (r *Renter) AddHostDBProfiles(name string, storagetier string) (err error) {
+	return r.hostDB.AddHostDBProfiles(name, storagetier)
+}
 
 // AllHosts returns an array of all hosts
-func (r *Renter) AllHosts() []modules.HostDBEntry { return r.hostDB.AllHosts() }
+func (r *Renter) AllHosts(tree string) []modules.HostDBEntry { return r.hostDB.AllHosts(tree) }
 
 // Host returns the host associated with the given public key
 func (r *Renter) Host(spk types.SiaPublicKey) (modules.HostDBEntry, bool) { return r.hostDB.Host(spk) }
+
+// HostDBProfiles returns the map of set hostdb profiles.
+func (r *Renter) HostDBProfiles() map[string]*hostdbprofile.HostDBProfile { return r.hostDB.HostDBProfiles() }
+
+// ConfigHostDBProfiles updates the provided setting of the hostdb profile with the
+// provided name to the provided value. All parameters are checked for validity.
+func (r *Renter) ConfigHostDBProfiles(name, setting, value string) (err error) {
+	return r.hostDB.ConfigHostDBProfile(name, setting, value)
+}
+
+// DeleteHostDBProfile deletes the hostdb profile with the provided name.
+func (r *Renter) DeleteHostDBProfile(name string) error {
+	return r.hostDB.DeleteHostDBProfile(name)
+}
 
 // InitialScanComplete returns a boolean indicating if the initial scan of the
 // hostdb is completed.
 func (r *Renter) InitialScanComplete() (bool, error) { return r.hostDB.InitialScanComplete() }
 
 // ScoreBreakdown returns the score breakdown
-func (r *Renter) ScoreBreakdown(e modules.HostDBEntry) modules.HostScoreBreakdown {
-	return r.hostDB.ScoreBreakdown(e)
+func (r *Renter) ScoreBreakdown(e modules.HostDBEntry, hostdbprofile string) modules.HostScoreBreakdown {
+	return r.hostDB.ScoreBreakdown(e, hostdbprofile)
 }
 
 // EstimateHostScore returns the estimated host score
-func (r *Renter) EstimateHostScore(e modules.HostDBEntry) modules.HostScoreBreakdown {
-	return r.hostDB.EstimateHostScore(e)
+func (r *Renter) EstimateHostScore(e modules.HostDBEntry, hostdbprofile string) modules.HostScoreBreakdown {
+	return r.hostDB.EstimateHostScore(e, hostdbprofile)
 }
 
 // Contracts returns an array of host contractor's staticContracts

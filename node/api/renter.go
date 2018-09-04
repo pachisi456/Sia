@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/renter"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/build"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/modules/renter"
+	"github.com/pachisi456/Sia/types"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -115,10 +115,14 @@ type (
 
 	// RenterContracts contains the renter's contracts.
 	RenterContracts struct {
-		Contracts         []RenterContract `json:"contracts"`
+		Contracts       []RenterContract `json:"contracts"`
 		ActiveContracts   []RenterContract `json:"activecontracts"`
 		InactiveContracts []RenterContract `json:"inactivecontracts"`
 		ExpiredContracts  []RenterContract `json:"expiredcontracts"`
+		Countries       []string
+		AvgStoragePrice types.Currency
+		AvgDLPrice      types.Currency
+		AvgULPrice      types.Currency
 	}
 
 	// RenterDownloadQueue contains the renter's download queue.
@@ -300,6 +304,11 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 	// Get current block height for reference
 	blockHeight := api.cs.Height()
 
+	var storagePrices types.Currency
+	var dlPrices types.Currency
+	var ulPrices types.Currency
+	var countries []string
+
 	// Get active contracts
 	contracts := []RenterContract{}
 	activeContracts := []RenterContract{}
@@ -349,6 +358,24 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 			inactiveContracts = append(inactiveContracts, contract)
 		}
 		contracts = append(contracts, contract)
+
+		// Gather location and pricing information:
+		entry, _ := api.renter.Host(c.HostPublicKey)
+		storagePrices = storagePrices.Add(entry.StoragePrice)
+		ulPrices = ulPrices.Add(entry.UploadBandwidthPrice)
+		dlPrices = dlPrices.Add(entry.DownloadBandwidthPrice)
+		countries = append(countries, entry.Country)
+	}
+
+
+	rc := RenterContracts{
+		Contracts: contracts,
+		Countries: countries,
+	}
+	if len(contracts) > 0 {
+		rc.AvgStoragePrice = storagePrices.Div64(uint64(len(contracts)))
+		rc.AvgULPrice = ulPrices.Div64(uint64(len(contracts)))
+		rc.AvgDLPrice = dlPrices.Div64(uint64(len(contracts)))
 	}
 
 	// Get expired contracts
@@ -400,12 +427,11 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	WriteJSON(w, RenterContracts{
-		Contracts:         contracts,
-		ActiveContracts:   activeContracts,
-		InactiveContracts: inactiveContracts,
-		ExpiredContracts:  expiredContracts,
-	})
+	rc.ActiveContracts = activeContracts
+	rc.InactiveContracts = inactiveContracts
+	rc.ExpiredContracts = expiredContracts
+
+	WriteJSON(w, rc)
 }
 
 // renterClearDownloadsHandler handles the API call to request to clear the download queue.

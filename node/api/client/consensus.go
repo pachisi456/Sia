@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 
-	"github.com/NebulousLabs/Sia/node/api"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/node/api"
+	"github.com/pachisi456/Sia/types"
 )
 
 // ConsensusGet requests the /consensus api resource

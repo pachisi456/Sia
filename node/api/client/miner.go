@@ -1,9 +1,9 @@
 package client
 
 import (
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/node/api"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/encoding"
+	"github.com/pachisi456/Sia/node/api"
+	"github.com/pachisi456/Sia/types"
 )
 
 // MinerGet requests the /miner endpoint's resources.

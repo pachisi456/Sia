@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/types"
 )
 
 // TestConsensusGet probes the GET call to /consensus.

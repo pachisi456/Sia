@@ -5,8 +5,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/crypto"
+	"github.com/pachisi456/Sia/types"
+	"github.com/pachisi456/Sia/modules/renter/hostdb/hostdbprofile"
 
 	"github.com/NebulousLabs/errors"
 )
@@ -119,6 +120,11 @@ type FileInfo struct {
 type HostDBEntry struct {
 	HostExternalSettings
 
+	// Country is the name of the country the host is located at according to their ip.
+	// EUhost is a boolean indicating whether the host is located within the european union or not.
+	Country string `json:"country"`
+	EUhost  bool   `json:"euhost"`
+
 	// FirstSeen is the last block height at which this host was announced.
 	FirstSeen types.BlockHeight `json:"firstseen"`
 
@@ -157,6 +163,7 @@ type HostDBScan struct {
 type HostScoreBreakdown struct {
 	Score          types.Currency `json:"score"`
 	ConversionRate float64        `json:"conversionrate"`
+	Blacklisted    bool           `json:"blacklisted"`
 
 	AgeAdjustment              float64 `json:"ageadjustment"`
 	BurnAdjustment             float64 `json:"burnadjustment"`
@@ -321,13 +328,20 @@ type ContractorSpending struct {
 type Renter interface {
 	// ActiveHosts provides the list of hosts that the renter is selecting,
 	// sorted by preference.
-	ActiveHosts() []HostDBEntry
+	ActiveHosts(string) []HostDBEntry
+
+	// AddHostDBProfile adds a new hostdb profile.
+	AddHostDBProfiles(string, string) error
 
 	// AllHosts returns the full list of hosts known to the renter.
-	AllHosts() []HostDBEntry
+	AllHosts(string) []HostDBEntry
 
 	// Close closes the Renter.
 	Close() error
+
+	// ConfigHostDBProfiles updates the provided setting of the hostdb profile with the
+	// provided name to the provided value. All parameters are checked for validity.
+	ConfigHostDBProfiles(name, setting, value string) (err error)
 
 	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []RenterContract
@@ -348,6 +362,9 @@ type Renter interface {
 
 	// DeleteFile deletes a file entry from the renter.
 	DeleteFile(path string) error
+
+	// DeleteHostDBProfile deletes the hostdb profile with the provided name.
+	DeleteHostDBProfile(name string) error
 
 	// Download performs a download according to the parameters passed, including
 	// downloads of `offset` and `length` type.
@@ -373,6 +390,9 @@ type Renter interface {
 	// Host provides the DB entry and score breakdown for the requested host.
 	Host(pk types.SiaPublicKey) (HostDBEntry, bool)
 
+	// HostDBProfiles returns the map of set hostdb profiles.
+	HostDBProfiles() map[string]*hostdbprofile.HostDBProfile
+	
 	// InitialScanComplete returns a boolean indicating if the initial scan of the
 	// hostdb is completed.
 	InitialScanComplete() (bool, error)
@@ -394,11 +414,11 @@ type Renter interface {
 
 	// EstimateHostScore will return the score for a host with the provided
 	// settings, assuming perfect age and uptime adjustments
-	EstimateHostScore(entry HostDBEntry) HostScoreBreakdown
+	EstimateHostScore(entry HostDBEntry, hostdbprofile string) HostScoreBreakdown
 
 	// ScoreBreakdown will return the score for a host db entry using the
 	// hostdb's weighting algorithm.
-	ScoreBreakdown(entry HostDBEntry) HostScoreBreakdown
+	ScoreBreakdown(entry HostDBEntry, hostdbprofile string) HostScoreBreakdown
 
 	// Settings returns the Renter's current settings.
 	Settings() RenterSettings

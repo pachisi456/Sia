@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/renter/proto"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/crypto"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/modules/renter/proto"
+	"github.com/pachisi456/Sia/types"
 )
 
 var errInvalidEditor = errors.New("editor has been invalidated because its contract is being renewed")

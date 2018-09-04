@@ -3,8 +3,8 @@ package hostdb
 import (
 	"math"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/pachisi456/Sia/modules"
+	"github.com/pachisi456/Sia/types"
 )
 
 // updateHostDBEntry updates a HostDBEntries's historic interactions if more
@@ -79,7 +79,7 @@ func (hdb *HostDB) IncrementSuccessfulInteractions(key types.SiaPublicKey) {
 	defer hdb.mu.Unlock()
 
 	// Fetch the host.
-	host, haveHost := hdb.hostTree.Select(key)
+	host, haveHost := hdb.hostTrees.Select(key)
 	if !haveHost {
 		return
 	}
@@ -89,7 +89,7 @@ func (hdb *HostDB) IncrementSuccessfulInteractions(key types.SiaPublicKey) {
 
 	// Increment the successful interactions
 	host.RecentSuccessfulInteractions++
-	hdb.hostTree.Modify(host)
+	hdb.hostTrees.Modify(host)
 }
 
 // IncrementFailedInteractions increments the number of failed interactions with
@@ -99,7 +99,7 @@ func (hdb *HostDB) IncrementFailedInteractions(key types.SiaPublicKey) {
 	defer hdb.mu.Unlock()
 
 	// Fetch the host.
-	host, haveHost := hdb.hostTree.Select(key)
+	host, haveHost := hdb.hostTrees.Select(key)
 	if !haveHost || !hdb.gateway.Online() {
 		// If we are offline it probably wasn't the host's fault
 		return
@@ -110,5 +110,5 @@ func (hdb *HostDB) IncrementFailedInteractions(key types.SiaPublicKey) {
 
 	// Increment the failed interactions
 	host.RecentFailedInteractions++
-	hdb.hostTree.Modify(host)
+	hdb.hostTrees.Modify(host)
 }
